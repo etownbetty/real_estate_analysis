@@ -30,7 +30,7 @@ class realEstateModel(object):
             df = pd.read_csv(filepath)
         return df
 
-    def prepare_data(self, filepath, dates=None, yr_first=False):
+    def prepare_data(self, filepath, outcome, dates=None, yr_first=False):
         '''
         Engineer new features and return in format for modeling and visualization
         '''
@@ -41,17 +41,22 @@ class realEstateModel(object):
         df['age'] = df['date'].apply(lambda x: x.year)-df['yr_built']
         df['renovated'] = df['yr_renovated'].apply(lambda x: 1 if x>0 else 0)
         df['ln_price'] = df['price'].apply(lambda x: np.log(x))
+        df['grade_sm'] = df['grade'].replace({3:1, 4:1, 5:1, 6:1})
         # df['binned_age'] = pd.cut(df.age, bins = 7)
         df['sqrt_living'] = df['sqft_living'].apply(lambda x: np.sqrt(x))
         df = df[df.bedrooms<15]
 
-        self.numericvars = ['ln_price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'age']
+        # self.numericvars = ['ln_price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'age']
+        self.allnumericvars = ['price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'age', 'sqft_above', 'sqft_basement', 'sqft_living15', 'sqft_lot15']
+        self.numericvars = ['price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'age']
         self.categoricvars = ['ziplarge', 'floors', 'waterfront', 'view', 'condition', 'grade', 'renovated']
         #what to do with 'lat', 'long'?
         self.df = df.drop(['zipcode', 'date', 'lat', 'long', 'yr_built', 'yr_renovated'], axis=1)
         self.df.drop_duplicates(subset='id', keep='last', inplace=True)
         self.X = pd.get_dummies(self.df, columns=['ziplarge', 'bedrooms', 'condition', 'grade', 'view', 'floors'], drop_first=True).drop(['id', 'price', 'ln_price'], axis=1)
-        self.y = self.df['ln_price']
+        # self.y = self.df['ln_price']
+        self.outcome = outcome
+        self.y = self.df[self.outcome]
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y)
         self.cols = self.X.columns
         #scale features
@@ -59,7 +64,32 @@ class realEstateModel(object):
         #do viz as well
         # self.scatterplots()
         # self.boxplots()
+        self.ln_boxplots()
+        # self.histograms()
+        self.correlation()
         return self.df
+
+    def histograms(self):
+        '''
+        VISUALIZE distributions of numeric variables
+        '''
+        for var in self.numericvars:
+            plt.hist(var, data=self.df, bins=20)
+            plt.savefig('figures/realestate_{}_histogram.pdf'.format(var))
+            plt.close()
+
+    def correlation(self):
+        '''
+        corrlelation matrix of all numeric vars
+        '''
+        corr = self.df[self.allnumericvars].corr()
+        plt.matshow(corr)
+        plt.xticks(range(len(corr.columns)), corr.columns);
+        plt.yticks(range(len(corr.columns)), corr.columns);
+        print(self.df[self.allnumericvars].corr())
+        # plt.tight_layout()
+        plt.savefig('figures/realestate_correlationmatrix.pdf')
+        plt.close()
 
     def scatterplots(self):
         '''
@@ -67,16 +97,25 @@ class realEstateModel(object):
         '''
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
         ax = pd.tools.plotting.scatter_matrix(self.df[self.numericvars], ax=ax, diagonal='kde')
-        plt.savefig('figures/realestate_numericScatterplots.pdf')
+        plt.savefig('figures/realestate_price_numericScatterplots.pdf')
         plt.close()
+
+    def ln_boxplots(self):
+        '''
+        VISUALIZE relationship between price and categical variables
+        '''
+        for var in self.categoricvars:
+            sns.boxplot(y='ln_price', x=var, data=self.df)
+            plt.savefig('figures/realestate_lnprice_{}_Boxplot.pdf'.format(var))
+            plt.close()
 
     def boxplots(self):
         '''
         VISUALIZE relationship between price and categical variables
         '''
         for var in self.categoricvars:
-            sns.boxplot(y='ln_price', x=var, data=self.df)
-            plt.savefig('figures/realestate_{}_Boxplot.pdf'.format(var))
+            sns.boxplot(y='price', x=var, data=self.df)
+            plt.savefig('figures/realestate_price_{}_Boxplot.pdf'.format(var))
             plt.close()
 
     def ols_model(self, df, formula, modelType):
@@ -89,16 +128,17 @@ class realEstateModel(object):
         print("Model: {}".format(formula))
         print(self.res.summary())
         self.modelType = modelType
+        # self.ols_model_viz(df)
         return self.res
-        self.ols_model_viz(df)
+
 
     def ols_model_viz(self, df):
         '''
         Visulize residuals and diagnostics
         '''
-        plt.scatter(self.res.fittedvalues, df['ln_price'])
+        plt.scatter(self.res.fittedvalues, df[self.outcome])
         plt.xlabel('Fitted Values')
-        plt.ylabel('log price')
+        plt.ylabel(self.outcome)
         plt.title('Fitted Values Plot')
         plt.savefig('figures/model{}FittedValues.pdf'.format(self.modelType))
         plt.close()
@@ -110,7 +150,7 @@ class realEstateModel(object):
         plt.close()
         fig = plt.figure(figsize=(20,12))
         fig = sm.graphics.plot_partregress_grid(self.res, fig=fig)
-        plt.savefig('figures/model{}_partialDependence.pdf'.format(self.modelType))
+        plt.savefig('figures/model{}_partialRegression.pdf'.format(self.modelType))
         plt.close()
         influence = self.res.get_influence()
         (c, p) = influence.cooks_distance
@@ -120,10 +160,10 @@ class realEstateModel(object):
         plt.title('Cooks Distance plot')
         plt.savefig('figures/model{}_CooksDistance.pdf'.format(self.modelType))
         plt.close()
-        plot_leverage_resid2(fitted)
+        plot_leverage_resid2(self.res.fittedvalues)
         plt.savefig('figures/model{}_LeverageResid.pdf'.format(self.modelType))
         plt.close()
-        influence_plot(fitted)
+        influence_plot(self.res.fittedvalues)
         plt.savefig('figures/model{}_InfluencePlot.pdf'.format(self.modelType))
         plt.close()
 
@@ -268,18 +308,21 @@ class realEstateModel(object):
 if __name__ == "__main__":
 
     rmod = realEstateModel()
-    df = rmod.prepare_data('kc_house_data.csv')
+    # fit model with price vs sqft_living
+    # df_price = rmod.prepare_data('kc_house_data.csv', 'price')
+    # rmod.ols_model(df_price, "price~sqft_living", "PriceSimple")
     # fit model wRT sqft_living
-    rmod.ols_model(df, "ln_price~sqft_living", "Simple")
-    #fit model wRT sqft_living, grade, view, waterfront
+    df = rmod.prepare_data('kc_house_data.csv', 'ln_price')
+    # rmod.ols_model(df, "ln_price~sqft_living", "Simple")
+    # #fit model wRT sqft_living, grade, view, waterfront
     rmod.ols_model(df, "ln_price~ age + renovated + sqft_living + C(grade) + C(view) + waterfront", "Full")
-    #fit model wRT sqft_living, grade, view, waterfront, zipcode simplified
-    rmod.ols_model(df, "ln_price~ age + renovated + sqft_living + C(grade) + C(view) + C(ziplarge) + waterfront", "Complex")
-    #look at VIF for all features
-    vifs = rmod.vifs(df.drop(['id', 'price', 'ln_price', 'ziplarge', 'sqrt_living'], axis=1))
-
-    print(rmod.calc_linear())
-    alphamin = rmod.plot_lasso(np.linspace(0.0005, 1, 100))
-    print(rmod.lasso([0.005, 0.01, 0.05]))
-
-    rmod.ols_model(df, "ln_price~ bathrooms + age + renovated + sqrt_living + C(grade) + C(view) + C(ziplarge) + waterfront", "Final")
+    # #fit model wRT sqft_living, grade, view, waterfront, zipcode simplified
+    # rmod.ols_model(df, "ln_price~ age + renovated + sqft_living + C(grade) + C(view) + C(ziplarge) + waterfront", "Complex")
+    # #look at VIF for all features
+    # vifs = rmod.vifs(df.drop(['id', 'price', 'ln_price', 'ziplarge', 'sqrt_living'], axis=1))
+    #
+    # print(rmod.calc_linear())
+    # alphamin = rmod.plot_lasso(np.linspace(0.0005, 1, 100))
+    # print(rmod.lasso([0.005, 0.01, 0.05]))
+    #
+    # rmod.ols_model(df, "ln_price~ bathrooms + age + renovated + sqft_living + C(grade) + C(view) + C(ziplarge) + waterfront", "Final")
