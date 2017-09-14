@@ -25,7 +25,6 @@ So I took a log transform of the house price and refit the model. The sqft featu
 I then added some additional features that appeared to have a relatively linear relationship with the log price variable, according to the correlation plot matrix and box plots against the log price outcome, and didn't have any redundancy with each other. The features that I added, age of house, whether it had been renovated, the grade, the view, and waterfront property status were all significantly associated with the log price outcome and more of the variance was explained in the model - the adjusted R-Square measure went up to 0.638.
 The residual plot showed that the errors were randomly distributed around a mean of zero and the outliers appear to have been explained better with a more complex model.
 
-[Full Model Log-transformed Residuals](./figures/modelFull_residuals.pdf)
 <center>
   <img src="./figures/modelFull_residuals.pdf" alt="Full Model Log-transformed Residuals">
 </center>
