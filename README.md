@@ -39,4 +39,6 @@ I cross-checked my model using a lasso procedure to do feature selection from al
 
 My final model to predict housing prices is:
 
-$$ ln_price = bathrooms + age + renovated + sqft_living + C(grade) + C(view) + C(ziplarge) + waterfront $$
+ln_price = bathrooms + age + renovated + sqft_living + grade + view + ziplarge + waterfront
+
+Where ziplarge is my feature with super-zip codes, i.e. 4 number zip codes
