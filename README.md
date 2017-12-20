@@ -12,12 +12,12 @@ Before fitting a model, I wanted to see how the variables were distributed and i
 
 As a starting point, I fit a model of price vs sqft, which had an rSquared value of 0.492, and showed that sqft was a significant predictor or house price, but upon inspection of the residual plots, there is a pattern to the residuals - the larger the house price, the larger the errors, seen below.
 <center>
-  <img src="./figures/modelPriceSimple_residuals.pdf" alt="Simple Model Residuals">
+  <img src="./figures/modelPriceSimple_residuals.png" alt="Simple Model Residuals">
 </center>
 
 So I took a log transform of the house price and refit the model. The sqft feature stayed significant, and the residuals were more randomly distributed around a mean of zero, with the exception of some outliers, which were also seen in the original residual plot.
 <center>
-  <img src="./figures/modelSimple_residuals.pdf" alt="Simple Model Log-transformed Residuals">
+  <img src="./figures/modelSimple_residuals.png" alt="Simple Model Log-transformed Residuals">
 </center>
 
 ## A full model
@@ -26,7 +26,7 @@ I then added some additional features that appeared to have a relatively linear 
 The residual plot showed that the errors were randomly distributed around a mean of zero and the outliers appear to have been explained better with a more complex model.
 
 <center>
-  <img src="./figures/modelFull_residuals.pdf" alt="Full Model Log-transformed Residuals">
+  <img src="./figures/modelFull_residuals.png" alt="Full Model Log-transformed Residuals">
 </center>
 
 ## A complex model
